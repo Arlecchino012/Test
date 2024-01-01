@@ -1,54 +1,55 @@
-const axios = require("axios");
+const axios = require('axios');
+const moment = require('moment-timezone');
 
 module.exports = {
   config: {
-    name: "arlecchino",
-    version: "1.0",
-    author: "Riley Nelson", //don't change or I burn the APi
+    name: 'botstats',
+    author: 'Jun',
     countDown: 5,
-    role: 0,
-    shortDescription: {
-      id: "Perintah untuk berinteraksi dengan AI Pemula",
-      en: "Command to interact with Beginner AI"
-    },
-    longDescription: {
-      id: "Perintah ini mengirim pertanyaan atau kueri ke AI Pemula dan mengembalikan jawabannya.",
-      en: "This command sends a question or query to Beginner AI and returns the answer."
-    },
-    category: "AI",
-    guide: {
-      id: "Penggunaan: !beginnerai [pertanyaan atau kueri]",
-      en: "{p}arlecchino [question or query]"
-    }
+    role: 2,
+    category: 'tools',
+    shortDescription: { en: "" }
   },
 
-  onStart: async function ({ api, args, message, event, usersData }) {
-    const userID = event.senderID;
-    const userName = await usersData.getName(userID);
-
-    const response = args.join(" ");
-
-    if (args.length === 0) {
-      message.reply("Write down questions or queries.");
-      return;
-    }
-
-    const typingIndicator = api.sendTypingIndicator(event.threadID);
-
+  onStart: async function({ event, api, message, args, usersData, threadsData }) {
     try {
-      const encodedResponse = encodeURIComponent(response);
-      const params = { name: userName, id: userID, bot: "Arlecchino" }; // change your_bot_name to your bot name
+      const allUsers = await usersData.getAll();
+      const allThreads = await threadsData.getAll();
+      const uptime = process.uptime();
 
-      const { data } = await axios.get(`https://pemula--kurgtahu.repl.co/api/ai/${encodedResponse}`, { params });
+      const hours = Math.floor(uptime / 3600);
+      const minutes = Math.floor((uptime % 3600) / 60);
+      const seconds = Math.floor(uptime % 60);
 
-      typingIndicator();
+      const uptimeString = `${hours}:${minutes}:${seconds}`;
 
-      const replyMessage = data.reply;
-      message.reply(replyMessage);
+      const currentDate = moment().tz('Asia/Tokyo').format('YYYY-MM-DD');
+      const currentTime = moment().tz('Asia/Tokyo').format('HH:mm:ss');
+
+    const output2 = `\nBOT STATS\n\nbot running: ${uptimeString}\ncurrent time: ${currentTime}\ncurrent date: ${currentDate}`;
+
+      const response = await axios.get('https://api-test.yourboss12.repl.co/stats/hello');
+      const data = response.data;
+
+      const sortedData = data.sort((a, b) => b[Object.keys(b)[0]] - a[Object.keys(a)[0]]);
+
+      let commandCount = 10;
+      if (args[0] && args[0].toLowerCase() === 'all') {
+        commandCount = data.length;
+      }
+
+      const topCommands = sortedData.slice(0, commandCount);
+
+      let output = `${output2}\ntotal users: ${allUsers.length}\ntotal threads: ${allThreads.length}\n\n\nTop ${commandCount} most spammed commands from 2023-08-14 to ${currentDate}\n\n`;
+      topCommands.forEach((command, index) => {
+        const commandName = Object.keys(command)[0];
+        const commandCount = command[commandName];
+        output += `${index + 1}. ${commandName}: ${commandCount}\n`;
+      });
+
+      api.sendMessage(output, event.threadID, event.messageID);
     } catch (error) {
-      console.error("Error interacting with Beginner AI:", error.message);
-      typingIndicator();
-      message.reply(`${error}`);
+      console.error(error);
     }
-  }
+}
 };
